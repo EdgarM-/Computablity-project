@@ -270,6 +270,33 @@ public:
 	}
 };
 
+
+/*
+	Crea un DFSA completo a partir un DFSA
+*/
+Fsa CompletarFsa (const Fsa& afsa)
+{
+	int aestados = afsa.matrizAdyacencia.size(),
+		nestados = aestados + 1;
+
+	Fsa respuesta(nestados);
+
+	for (int i = 0; i < aestados; ++i)
+	{
+		for (int j = 0; j < aestados; ++j)
+		{
+			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
+		}
+	}
+
+	respuesta.initialStates = afsa.initialStates;
+	respuesta.finalStates = afsa.finalStates;
+	respuesta.name = afsa.name;
+
+	return respuesta;
+}
+
+
 /*
 	Crea un FSA determinista a partir un FSA no determinista
 */
