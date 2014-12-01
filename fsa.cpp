@@ -102,7 +102,10 @@ public:
 	*/
 	void AddTran(int n1, int n2, std::string transition)
 	{
-		matrizAdyacencia[n1-1][n2-1] = matrizAdyacencia[n1-1][n2-1] + transition;
+		matrizAdyacencia[n1-1][n2-1] = matrizAdyacencia[n1-1][n2-1] + transition;	
+		// Agregamos el caracter al lenguaje
+		if(lenguaje.find(transition) == std::string::npos)
+			lenguaje += transition;
 	}
 
 	/*
@@ -459,9 +462,6 @@ Fsa CrearCLI()
 	{
 		std::cin >> y >> entrada;
 		automata.AddTran(x, y, entrada);
-		// Agregamos el caracter al lenguaje
-		if(automata.lenguaje.find(entrada) == std::string::npos)
-			automata.lenguaje += entrada;
 	}
 
 	std::cout << "Ingrese el numero de estados iniciales: ";
