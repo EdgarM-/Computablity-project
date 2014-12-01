@@ -9,6 +9,7 @@
 
 const std::string epsilon = ":";
 
+
 class Fsa
 {
 public:
@@ -104,7 +105,7 @@ public:
 	{
 		matrizAdyacencia[n1-1][n2-1] = matrizAdyacencia[n1-1][n2-1] + transition;	
 		// Agregamos el caracter al lenguaje
-		if(lenguaje.find(transition) == std::string::npos)
+		if(transition != ":" && lenguaje.find(transition) == std::string::npos)
 			lenguaje += transition;
 	}
 
@@ -188,30 +189,7 @@ public:
 	/*
 		Revisa si la cadena es aceptada por el fsa. Devuelve 1 en caso de que sea aceptada, 0 en los demas casos
 	*/
-	int ComprobarCadena(std::string entrada) const
-	{
-		int estadoActual = initialStates[0]-1, size = matrizAdyacencia.size(), tmp = 0;	
-
-		for(int i = 0; i < entrada.size(); ++i)
-		{	
-			for (int j = 0; j < size; ++j)
-			{				
-				if (matrizAdyacencia[estadoActual][j] != "" &&  matrizAdyacencia[estadoActual][j].find(entrada[i]) != std::string::npos )
-				{
-					estadoActual = j;
-					break;	
-				}
-			}
-		}	
-		for (int i = 0; i < finalStates.size(); ++i)
-		{
-			if (finalStates[i]-1 == estadoActual)
-			{
-				return 1;
-			}
-		}
-		return 0;
-	}
+	int ComprobarCadena(std::string) const;
 
 
 	/*
@@ -219,12 +197,13 @@ public:
 	*/
 	void MostrarFsa() const
 	{
-		std::cout << "FSA\n Estados Iniciales: \n";
+		std::cout << "FSA\nEstados Iniciales: \n";
 		for(auto& a : initialStates)
 			std::cout << a << "\n";
 		std::cout << "Estados Finales: \n";
 		for(auto& a : finalStates)
 			std::cout << a << "\n";
+		std::cout << "Alfabeto:\n" << lenguaje << "\n";
 		std::cout << "Transiciones\n";
 		int size = matrizAdyacencia.size();
 		for (int i = 0; i < size; ++i)
@@ -237,6 +216,7 @@ public:
   				}
   			}
   		}
+  		std::cout << std::endl;
 	}
 
 	/*
@@ -270,6 +250,64 @@ public:
 	}
 };
 
+Fsa DeterminarFsa(const Fsa&);
+
+int Fsa::ComprobarCadena(std::string entrada) const
+	{
+		int estadoActual = initialStates[0]-1, size = matrizAdyacencia.size(), tmp = 0;
+		Fsa nuevaFSA;
+		if (tipo == 0)
+		{
+			nuevaFSA = DeterminarFsa(*this);
+			for(int i = 0; i < entrada.size(); ++i)
+			{
+				bool encontrado = false;
+				for (int j = 0; j < size; ++j)
+				{				
+					if (nuevaFSA.matrizAdyacencia[estadoActual][j] != "" &&  nuevaFSA.matrizAdyacencia[estadoActual][j].find(entrada[i]) != std::string::npos )
+					{
+						estadoActual = j;
+						encontrado = true;
+						break;	
+					}
+				}
+				if (encontrado == false) return 0;
+			}	
+			for (int i = 0; i < nuevaFSA.finalStates.size(); ++i)
+			{
+				if (nuevaFSA.finalStates[i]-1 == estadoActual)
+				{
+					return 1;
+				}
+			}
+		}
+		else
+		{
+			for(int i = 0; i < entrada.size(); ++i)
+			{
+				bool encontrado = false;
+				for (int j = 0; j < size; ++j)
+				{				
+					if (matrizAdyacencia[estadoActual][j] != "" &&  matrizAdyacencia[estadoActual][j].find(entrada[i]) != std::string::npos )
+					{
+						estadoActual = j;
+						encontrado = true;
+						break;	
+					}
+				}
+				if (encontrado == false) return 0;
+			}	
+			for (int i = 0; i < finalStates.size(); ++i)
+			{
+				if (finalStates[i]-1 == estadoActual)
+				{
+					return 1;
+				}
+			}
+		}
+		return 0;
+	}
+
 
 /*
 	Crea un DFSA completo a partir un DFSA
@@ -283,9 +321,20 @@ Fsa CompletarFsa (const Fsa& afsa)
 
 	for (int i = 0; i < aestados; ++i)
 	{
+		std::string tmp = "";
 		for (int j = 0; j < aestados; ++j)
 		{
-			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
+			respuesta.AddTran(i+1, j+1, afsa.matrizAdyacencia[i][j]);
+			tmp += afsa.matrizAdyacencia[i][j];
+		}
+		for (int k = 0; k < afsa.lenguaje.size(); ++k )
+		{
+			if (tmp.find(afsa.lenguaje[k]) == std::string::npos)
+			{
+				std::string test = "";
+				test += afsa.lenguaje[k];
+				respuesta.AddTran(i+1, nestados, test);
+			}
 		}
 	}
 
@@ -307,32 +356,27 @@ Fsa DeterminarFsa (const Fsa& afsa)
 		aini = afsa.initialStates.size(),
 		afin = afsa.finalStates.size();
 
-	Fsa respuesta(nestados);
-
-	for (int i = 0; i < aestados; ++i)
+	if(afsa.tipo == 0)
 	{
-		for (int j = 0; j < aestados; ++j)
+		std::vector< std::vector< std::string> > nuevaMAdyacencia;
+
+		/* Colapsar los estados epsilon */
+		for (int i = 0; i < aestados; ++i)
 		{
-			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
+			std::vector<std::string> tmp;
+			for (int j = 0; j < aestados; ++j)
+			{
+				if(afsa.matrizAdyacencia[i][j].find(':') == std::string::npos)
+				{
+
+				}
+			}
 		}
+		Fsa respuesta(nestados);
+		respuesta.name += "Deter";
 	}
 
-	respuesta.AddIni(1);
-
-	for (int i = 0; i < aini; ++i)
-	{
-		respuesta.AddIni(afsa.initialStates[i]+1);
-		respuesta.AddTran(1,afsa.initialStates[i]+1,":");
-	}
-
-	for (int i = 0; i < afin; ++i)
-	{
-		respuesta.AddFin(afsa.finalStates[i]+1);
-	}
-
-	respuesta.name += "Deter";
-
-	return respuesta;
+	return afsa;
 }
 
 /*
@@ -403,28 +447,11 @@ Fsa CompFsa (const Fsa& afsa)
 		aini = afsa.initialStates.size(),
 		afin = afsa.finalStates.size();
 
-	Fsa respuesta(nestados);
+	Fsa respuesta = CompletarFsa(DeterminarFsa(afsa));
 
-	for (int i = 0; i < aestados; ++i)
-	{
-		for (int j = 0; j < aestados; ++j)
-		{
-			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
-		}
-	}
-
-	respuesta.AddIni(1);
-
-	for (int i = 0; i < aini; ++i)
-	{
-		respuesta.AddIni(afsa.initialStates[i]+1);
-		respuesta.AddTran(1,afsa.initialStates[i]+1,":");
-	}
-
-	for (int i = 0; i < afin; ++i)
-	{
-		respuesta.AddFin(afsa.finalStates[i]+1);
-	}
+	std::vector< int > tmp = respuesta.initialStates;
+	respuesta.initialStates = respuesta.finalStates;
+	respuesta.finalStates = tmp;
 
 	respuesta.name += "Comp";
 
@@ -569,17 +596,19 @@ int main(int argc, char const *argv[])
 
 	while(true)
 	{
-		std::cout << "Que desea hacer:\n";
-		std::cout << "1 Crear un automata\n";
-		std::cout << "2 Unir dos automatas\n";
-		std::cout << "3 Complemento de un automata\n";
-		std::cout << "4 Probar una cadena con un automata\n";
-		std::cout << "5 Comparar dos automatas\n";
-		std::cout << "6 Transformar en expresion regular\n";
-		std::cout << "7 Transformar NFSA en DFSA\n";
-		std::cout << "8 Minimizar un DFSA\n";
-		std::cout << "9 Ver un FSA\n";
-		std::cout << "0 Salir\n";
+		std::cout << "\nQue desea hacer:\n";
+		std::cout << "1  Crear un automata\n";
+		std::cout << "2  Unir dos automatas\n";
+		std::cout << "3  Complemento de un automata\n";
+		std::cout << "4  Probar una cadena con un automata\n";
+		std::cout << "5  Comparar dos automatas\n";
+		std::cout << "6  Transformar en expresion regular\n";
+		std::cout << "7  Transformar NFSA en DFSA\n";
+		std::cout << "8  Minimizar un DFSA\n";
+		std::cout << "9  Ver un FSA\n";
+		std::cout << "10 Guardar un FSA en disco\n";
+		std::cout << "11 Leer un FSA de disco\n";
+		std::cout << "0  Salir\n";
 		std::cout << "Ingresar opcion: ";
 		std::cin >> entrada;
 
@@ -632,7 +661,6 @@ int main(int argc, char const *argv[])
 				Fsa nuevaFSA = CompFsa(automatas[in1 - 1]);
 				automatas.push_back(nuevaFSA);
 				std::cout << "Automata " << nuevaFSA.name << " creado" << std::endl;
-				/* Implementar CompFsa */
 			}
 		}
 		else if(entrada == 4)
@@ -734,6 +762,29 @@ int main(int argc, char const *argv[])
 				std::cout << "No existe el automata!" << std::endl;
 			else
 				automatas[in1 - 1].MostrarFsa();
+		}
+		else if(entrada == 10)
+		{
+			int in1;
+			std::cout << "Ingrese el automata: ";
+			std::cin >> in1;
+
+			if(in1 < 1 || in1 > automatas.size())
+				std::cout << "No existe el automata!" << std::endl;
+			else
+				automatas[in1 - 1].GuardarFsa(automatas[in1 - 1].name);
+		}
+		else if(entrada == 11)
+		{
+			std::string nombreFsa;
+			std::cout << "Ingrese el nombre del archivo: ";
+			std::cin >> nombreFsa;
+
+			Fsa nuevaFSA;
+			nuevaFSA.CargarFsa(nombreFsa);
+			nuevaFSA.name = "trad" + nombreFsa;
+			automatas.push_back(nuevaFSA);
+			std::cout << "Automata " << nuevaFSA.name << " creado" << std::endl;
 		}
 
 	}
