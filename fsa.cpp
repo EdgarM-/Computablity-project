@@ -286,13 +286,6 @@ Fsa DeterminarFsa (const Fsa& afsa)
 			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
 		}
 	}
-	for (int i = 0; i < bestados; ++i)
-	{
-		for (int j = 0; j < bestados; ++j)
-		{
-			respuesta.AddTran(i+aestados+2, j+aestados+2, bfsa.matrizAdyacencia[i][j]);
-		}
-	}
 
 	respuesta.AddIni(1);
 
@@ -301,20 +294,14 @@ Fsa DeterminarFsa (const Fsa& afsa)
 		respuesta.AddIni(afsa.initialStates[i]+1);
 		respuesta.AddTran(1,afsa.initialStates[i]+1,":");
 	}
-	for (int i = 0; i < bini; ++i)
-	{
-		respuesta.AddIni(bfsa.initialStates[i]+aestados+1);
-		respuesta.AddTran(1,bfsa.initialStates[i]+aestados+1,":");
-	}
 
 	for (int i = 0; i < afin; ++i)
 	{
 		respuesta.AddFin(afsa.finalStates[i]+1);
 	}
-	for (int i = 0; i < bfin; ++i)
-	{
-		respuesta.AddFin(bfsa.finalStates[i]+aestados+1);
-	}
+
+	respuesta.name += "Deter";
+
 	return respuesta;
 }
 
@@ -369,6 +356,10 @@ Fsa UnirFsa (const Fsa& afsa, const Fsa& bfsa)
 	{
 		respuesta.AddFin(bfsa.finalStates[i]+aestados+1);
 	}
+
+	respuesta.name = afsa.name + bfsa.name;
+	respuesta.tipo = 0;
+
 	return respuesta;
 }
 
@@ -378,12 +369,9 @@ Fsa UnirFsa (const Fsa& afsa, const Fsa& bfsa)
 Fsa CompFsa (const Fsa& afsa)
 {
 	int aestados = afsa.matrizAdyacencia.size(),
-		bestados = bfsa.matrizAdyacencia.size(),
-		nestados = aestados + bestados + 1,
+		nestados = aestados + 1,
 		aini = afsa.initialStates.size(),
-		afin = afsa.finalStates.size(),
-		bini = bfsa.initialStates.size(),
-		bfin = bfsa.finalStates.size();
+		afin = afsa.finalStates.size();
 
 	Fsa respuesta(nestados);
 
@@ -394,11 +382,42 @@ Fsa CompFsa (const Fsa& afsa)
 			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
 		}
 	}
-	for (int i = 0; i < bestados; ++i)
+
+	respuesta.AddIni(1);
+
+	for (int i = 0; i < aini; ++i)
 	{
-		for (int j = 0; j < bestados; ++j)
+		respuesta.AddIni(afsa.initialStates[i]+1);
+		respuesta.AddTran(1,afsa.initialStates[i]+1,":");
+	}
+
+	for (int i = 0; i < afin; ++i)
+	{
+		respuesta.AddFin(afsa.finalStates[i]+1);
+	}
+
+	respuesta.name += "Comp";
+
+	return respuesta;
+}
+
+/*
+	Crea un FSA a partir de la minimizacion de otro FSA
+*/
+Fsa MinFsa (const Fsa& afsa)
+{
+	int aestados = afsa.matrizAdyacencia.size(),
+		nestados = aestados + 1,
+		aini = afsa.initialStates.size(),
+		afin = afsa.finalStates.size();
+
+	Fsa respuesta(nestados);
+
+	for (int i = 0; i < aestados; ++i)
+	{
+		for (int j = 0; j < aestados; ++j)
 		{
-			respuesta.AddTran(i+aestados+2, j+aestados+2, bfsa.matrizAdyacencia[i][j]);
+			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
 		}
 	}
 
@@ -409,20 +428,14 @@ Fsa CompFsa (const Fsa& afsa)
 		respuesta.AddIni(afsa.initialStates[i]+1);
 		respuesta.AddTran(1,afsa.initialStates[i]+1,":");
 	}
-	for (int i = 0; i < bini; ++i)
-	{
-		respuesta.AddIni(bfsa.initialStates[i]+aestados+1);
-		respuesta.AddTran(1,bfsa.initialStates[i]+aestados+1,":");
-	}
 
 	for (int i = 0; i < afin; ++i)
 	{
 		respuesta.AddFin(afsa.finalStates[i]+1);
 	}
-	for (int i = 0; i < bfin; ++i)
-	{
-		respuesta.AddFin(bfsa.finalStates[i]+aestados+1);
-	}
+
+	respuesta.name += "Min";
+
 	return respuesta;
 }
 
@@ -481,11 +494,16 @@ Fsa CrearCLI()
 		tipoAutomata = "no determinista";
 
 	std::cout << "Automata " << tipoAutomata << " creado" << std::endl;
+
+	std::cout << "Agregar nombre: ";
+	std::cin >> automata.name;
+
+	return automata;
 }
 
 int main(int argc, char const *argv[])
 {
-	Fsa prueba(5), prueba2;
+/*	Fsa prueba(5), prueba2;
 
 	prueba.AddIni(1);
 	prueba.AddFin(5);
@@ -517,6 +535,181 @@ int main(int argc, char const *argv[])
 	std::cout << "Inrgese una cadena a probar: ";
 	std::cin >> test_entrada;
 	std::cout << ((prueba.ComprobarCadena(test_entrada) == 1) ? "Yes" : "No") << std::endl;
+*/
+
+	int entrada = 10;
+	std::vector<Fsa> automatas;
+
+	while(true)
+	{
+		std::cout << "Que desea hacer:\n";
+		std::cout << "1 Crear un automata\n";
+		std::cout << "2 Unir dos automatas\n";
+		std::cout << "3 Complemento de un automata\n";
+		std::cout << "4 Probar una cadena con un automata\n";
+		std::cout << "5 Comparar dos automatas\n";
+		std::cout << "6 Transformar en expresion regular\n";
+		std::cout << "7 Transformar NFSA en DFSA\n";
+		std::cout << "8 Minimizar un DFSA\n";
+		std::cout << "9 Ver un FSA\n";
+		std::cout << "0 Salir\n";
+		std::cout << "Ingresar opcion: ";
+		std::cin >> entrada;
+
+		if (entrada == 0) break;
+		if (entrada == 1)
+		{
+			Fsa nuevaFSA = CrearCLI();
+			automatas.push_back(nuevaFSA);
+		}
+		if(automatas.size() == 0)
+			std::cout << "No hay automatas creados" << std::endl;
+		else
+		{
+			std::cout << "Automatas:\n";
+			for (int i = 0; i < automatas.size(); ++i)
+			{
+				std::cout << i+1 << " " << automatas[i].name << std::endl;
+			}
+		}
+
+		if (entrada == 2)
+		{
+			int in1, in2;
+			std::cout << "Ingrese el primer automata: ";
+			std::cin >> in1;
+			std::cout << "Ingrese el segundo automata: ";
+			std::cin >> in2;
+
+			if(in1 == in2)
+				std::cout << "Automatas iguales!" << std::endl;
+			else if(in1 < 1 || in2 < 1 || in1 > automatas.size() || in2 > automatas.size())
+				std::cout << "No existen los automatas!" << std::endl;
+			else
+			{
+				Fsa nuevaFSA = UnirFsa(automatas[in1 - 1], automatas[in2 - 1]);
+				automatas.push_back(nuevaFSA);
+				std::cout << "Automata " << nuevaFSA.name << " creado" << std::endl;
+			}
+		}
+		else if(entrada == 3)
+		{
+			int in1;
+			std::cout << "Ingrese el automata: ";
+			std::cin >> in1;
+
+			if(in1 < 1 || in1 > automatas.size())
+				std::cout << "No existe el automata!" << std::endl;
+			else
+			{
+				Fsa nuevaFSA = CompFsa(automatas[in1 - 1]);
+				automatas.push_back(nuevaFSA);
+				std::cout << "Automata " << nuevaFSA.name << " creado" << std::endl;
+				/* Implementar CompFsa */
+			}
+		}
+		else if(entrada == 4)
+		{
+			int in1;
+			std::string entrada_texto;
+			std::cout << "Ingrese el automata: ";
+			std::cin >> in1;
+
+			if(in1 < 1 || in1 > automatas.size())
+				std::cout << "No existe el automata!" << std::endl;
+			else
+			{
+				std::cout << "Ingrese el texto: ";
+				std::cin >> entrada_texto;
+				std::cout << ((automatas[in1-1].ComprobarCadena(entrada_texto) == 1)? "Yes":"No") << std::endl;
+				/* Implementar para NFSA */
+			}
+		}
+		else if(entrada == 5)
+		{
+			int in1, in2;
+			std::cout << "Ingrese el primer automata: ";
+			std::cin >> in1;
+			std::cout << "Ingrese el segundo automata: ";
+			std::cin >> in2;
+
+			if(in1 == in2)
+				std::cout << "Automatas iguales!" << std::endl;
+			else if(in1 < 1 || in2 < 1 || in1 > automatas.size() || in2 > automatas.size())
+				std::cout << "No existen los automatas!" << std::endl;
+			else
+			{
+				/* Terminar */
+			}
+		}
+		else if(entrada == 6)
+		{
+			int in1;
+			std::cout << "Ingrese el automata: ";
+			std::cin >> in1;
+
+			if(in1 < 1 || in1 > automatas.size())
+				std::cout << "No existe el automata!" << std::endl;
+			else
+			{
+				/* Implementar Regex */
+			}
+		}
+		else if(entrada == 7)
+		{
+			int in1;
+			std::cout << "Ingrese el automata: ";
+			std::cin >> in1;
+
+			if(in1 < 1 || in1 > automatas.size())
+				std::cout << "No existe el automata!" << std::endl;
+			else
+			{
+				if (automatas[in1 - 1].tipo == 1)
+					std::cout << "Automata determinista!" << std::endl;
+				else
+				{
+					Fsa nuevaFSA = DeterminarFsa(automatas[in1 - 1]);
+					automatas.push_back(nuevaFSA);
+					std::cout << "Automata " << nuevaFSA.name << " creado" << std::endl;
+					/* Implementar DeterminarFsa */
+				}
+			}
+		}
+		else if(entrada == 8)
+		{
+			int in1;
+			std::cout << "Ingrese el automata: ";
+			std::cin >> in1;
+
+			if(in1 < 1 || in1 > automatas.size())
+				std::cout << "No existe el automata!" << std::endl;
+			else
+			{
+				if (automatas[in1 - 1].tipo == 0)
+					std::cout << "Automata no-determinista!" << std::endl;
+				else
+				{
+					Fsa nuevaFSA = MinFsa(automatas[in1 - 1]);
+					automatas.push_back(nuevaFSA);
+					std::cout << "Automata " << nuevaFSA.name << " creado" << std::endl;
+					/* Implementar MinFsa */
+				}
+			}
+		}
+		else if(entrada == 9)
+		{
+			int in1;
+			std::cout << "Ingrese el automata: ";
+			std::cin >> in1;
+
+			if(in1 < 1 || in1 > automatas.size())
+				std::cout << "No existe el automata!" << std::endl;
+			else
+				automatas[in1 - 1].MostrarFsa();
+		}
+
+	}
 
 	return 0;
 }
