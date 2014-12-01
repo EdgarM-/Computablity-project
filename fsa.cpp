@@ -7,21 +7,45 @@
 #include <vector>
 #include <cstring>
 
+const std::string epsilon = ":";
+
 class Fsa
 {
 public:
-	std::vector< std::vector< std::string > > matrizAdyacencia; //Matriz para representar el Grafo
-	std::vector<int> initialStates; //Lista de estados iniciales
-	std::vector<int> finalStates; //Lista de estado finales
-	std::string name; //Nombre del archivo, esta vacio hasta que se guarda o se carga
-	Fsa()
-	{
+	std::vector< std::vector< std::string > > matrizAdyacencia; // Matriz para representar el Grafo
+	std::string lenguaje; // Cadena que contiene todos los simbolos del lenguaje
+	std::vector<int> initialStates; // Lista de estados iniciales
+	std::vector<int> finalStates; // Lista de estado finales
+	std::string name; // Nombre del archivo, esta vacio hasta que se guarda o se carga
+	int tipo; // Tipo de fsa, 0 - no-determinista, 1 - determinista.
 
-	}
+	Fsa()
+		: lenguaje(""), tipo(1), name("") 
+	{}
+
+	/*
+		Copy constructor
+	*/
+	Fsa(const Fsa& x)
+        : lenguaje(x.lenguaje), initialStates(x.initialStates), finalStates(x.finalStates), name(x.name), tipo(x.tipo)
+    {
+    	int size = x.matrizAdyacencia.size();
+    	matrizAdyacencia.resize(size);
+    	for (int i = 0; i < size; ++i)
+    	{
+    		matrizAdyacencia[i].resize(size);
+    		for (int j = 0; j < size; ++j)
+    		{
+    			matrizAdyacencia[i][j] = x.matrizAdyacencia[i][j];
+    		}
+    	}
+    }
+
 	/*
 		Crea un Fsa con n nodos 
 	*/
 	Fsa(int nodos)
+		: lenguaje(""), tipo(1), name("") 
 	{
 		matrizAdyacencia.resize(nodos);
 		for (int i = 0; i < nodos; ++i)
@@ -33,6 +57,7 @@ public:
 		Crea un Fsa con n nodos con un estado inicial y un estado final
 	*/
 	Fsa(int nodos, int inicial, int final)
+		: lenguaje(""), tipo(1), name("") 
 	{
 		matrizAdyacencia.resize(nodos);
 		for (int i = 0; i < nodos; ++i)
@@ -44,6 +69,7 @@ public:
 	}
 
 	Fsa(int nodos, std::vector<int> iniciales, std::vector<int> finales)
+		: lenguaje(""), tipo(1), name("") 
 	{
 		matrizAdyacencia.resize(nodos);
 		for (int i = 0; i < nodos; ++i)
@@ -76,9 +102,8 @@ public:
 	*/
 	void AddTran(int n1, int n2, std::string transition)
 	{
-		matrizAdyacencia[n1-1][n2-1] = transition;
+		matrizAdyacencia[n1-1][n2-1] = matrizAdyacencia[n1-1][n2-1] + transition;
 	}
-
 
 	/*
 	Escribe un archivo con la descripcion del fsa y el nombre dado
@@ -89,23 +114,23 @@ public:
 		name = nombre;
 		nombre += ".fsa";
 		saveFile.open (nombre.c_str());
-		int size = matrizAdyacencia.size();
+		int sizeAU = matrizAdyacencia.size();
 		int sizeIS = initialStates.size();
 		int sizeFS = finalStates.size();
-  		saveFile << size << "\n"<< sizeIS << "\n"<< sizeFS << "\n";
+  		saveFile << sizeAU << "\n"<< sizeIS << "\n"<< sizeFS << "\n";
   		for (int i = 0; i < sizeIS; ++i)
   		{
   			saveFile << initialStates[i] << "\n";
-  			
   		}
+
   		for (int i = 0; i < sizeFS; ++i)
   		{
-  			saveFile << finalStates[i] << "\n";
-  			
+  			saveFile << finalStates[i] << "\n";	
   		}
-  		for (int i = 0; i < size; ++i)
+
+  		for (int i = 0; i < sizeAU; ++i)
   		{
-  			for (int j = 0; j < size; ++j)
+  			for (int j = 0; j < sizeAU; ++j)
   			{
   				if (matrizAdyacencia[i][j] != "")
   				{
@@ -124,22 +149,25 @@ public:
 	{
 		std::ifstream loadFile;	
 		loadFile.open(path.c_str());
-		int size, sizeIS, sizeFS,tmp1, tmp2;
+		int sizeAU, sizeIS, sizeFS,tmp1, tmp2;
 		std::string transition;
 		if (loadFile.is_open())
   		{
-  			loadFile >> size >> sizeIS >> sizeFS;
-  			matrizAdyacencia.resize(size);
-			for (int i = 0; i < size; ++i)
+  			loadFile >> sizeAU >> sizeIS >> sizeFS;
+  			matrizAdyacencia.clear();
+  			matrizAdyacencia.resize(sizeAU);
+			for (int i = 0; i < sizeAU; ++i)
 			{
-				matrizAdyacencia[i].resize(size);
+				matrizAdyacencia[i].resize(sizeAU);
 			}
+			initialStates.clear();
 			for (int i = 0; i < sizeIS; ++i)
   			{	
   				loadFile >> tmp1;
   				initialStates.push_back(tmp1);
   			
   			}
+  			finalStates.clear();
   			for (int i = 0; i < sizeFS; ++i)
   			{	
   				loadFile >> tmp1;
@@ -157,7 +185,7 @@ public:
 	/*
 		Revisa si la cadena es aceptada por el fsa. Devuelve 1 en caso de que sea aceptada, 0 en los demas casos
 	*/
-	int ComprobarCadena(std::string entrada)
+	int ComprobarCadena(std::string entrada) const
 	{
 		int estadoActual = initialStates[0]-1, size = matrizAdyacencia.size(), tmp = 0;	
 
@@ -165,11 +193,10 @@ public:
 		{	
 			for (int j = 0; j < size; ++j)
 			{				
-				if (matrizAdyacencia[estadoActual][j][0] == entrada[i] )
+				if (matrizAdyacencia[estadoActual][j] != "" &&  matrizAdyacencia[estadoActual][j].find(entrada[i]) != std::string::npos )
 				{
 					estadoActual = j;
-					break;
-					
+					break;	
 				}
 			}
 		}	
@@ -187,7 +214,7 @@ public:
 	/*
 		Muestra la matriz de adyacencia y los estado iniciales y finales
 	*/
-	void MostrarFsa()
+	void MostrarFsa() const
 	{
 		std::cout << "FSA\n Estados Iniciales: \n";
 		for(auto& a : initialStates)
@@ -208,29 +235,288 @@ public:
   			}
   		}
 	}
+
+	/*
+		Retorna 1 si el FSA es determinista, 0 de lo contrario.
+	*/
+	int EsDeterminista() const
+	{
+		int size = matrizAdyacencia.size();
+		// Descartamos el caso trivial
+		if (initialStates.size() != 1) return 0;
+		//Revisamos las transiciones del automata
+		for (int j = 0; j < size; ++j)
+		{
+			std::string tmp = "";
+			for (int k = 0; k < size; k++)
+			{	
+				if(matrizAdyacencia[j][k] == epsilon) return 0;
+				if (matrizAdyacencia[j][k] != "")
+				{
+					for (int i = 0; i < matrizAdyacencia[j][k].size(); ++i)
+					{
+						if ( tmp.find(matrizAdyacencia[j][k][i]) != std::string::npos)
+							return 0;
+						else
+							tmp += matrizAdyacencia[j][k][i];
+					}
+				}
+			}
+		}
+		return 1;
+	}
 };
+
+/*
+	Crea un FSA determinista a partir un FSA no determinista
+*/
+Fsa DeterminarFsa (const Fsa& afsa)
+{
+	int aestados = afsa.matrizAdyacencia.size(),
+		nestados = aestados * aestados,
+		aini = afsa.initialStates.size(),
+		afin = afsa.finalStates.size();
+
+	Fsa respuesta(nestados);
+
+	for (int i = 0; i < aestados; ++i)
+	{
+		for (int j = 0; j < aestados; ++j)
+		{
+			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
+		}
+	}
+	for (int i = 0; i < bestados; ++i)
+	{
+		for (int j = 0; j < bestados; ++j)
+		{
+			respuesta.AddTran(i+aestados+2, j+aestados+2, bfsa.matrizAdyacencia[i][j]);
+		}
+	}
+
+	respuesta.AddIni(1);
+
+	for (int i = 0; i < aini; ++i)
+	{
+		respuesta.AddIni(afsa.initialStates[i]+1);
+		respuesta.AddTran(1,afsa.initialStates[i]+1,":");
+	}
+	for (int i = 0; i < bini; ++i)
+	{
+		respuesta.AddIni(bfsa.initialStates[i]+aestados+1);
+		respuesta.AddTran(1,bfsa.initialStates[i]+aestados+1,":");
+	}
+
+	for (int i = 0; i < afin; ++i)
+	{
+		respuesta.AddFin(afsa.finalStates[i]+1);
+	}
+	for (int i = 0; i < bfin; ++i)
+	{
+		respuesta.AddFin(bfsa.finalStates[i]+aestados+1);
+	}
+	return respuesta;
+}
+
+/*
+	Crea un FSA a partir de la union de dos FSA
+*/
+Fsa UnirFsa (const Fsa& afsa, const Fsa& bfsa)
+{
+	int aestados = afsa.matrizAdyacencia.size(),
+		bestados = bfsa.matrizAdyacencia.size(),
+		nestados = aestados + bestados + 1,
+		aini = afsa.initialStates.size(),
+		afin = afsa.finalStates.size(),
+		bini = bfsa.initialStates.size(),
+		bfin = bfsa.finalStates.size();
+
+	Fsa respuesta(nestados);
+
+	for (int i = 0; i < aestados; ++i)
+	{
+		for (int j = 0; j < aestados; ++j)
+		{
+			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
+		}
+	}
+	for (int i = 0; i < bestados; ++i)
+	{
+		for (int j = 0; j < bestados; ++j)
+		{
+			respuesta.AddTran(i+aestados+2, j+aestados+2, bfsa.matrizAdyacencia[i][j]);
+		}
+	}
+
+	respuesta.AddIni(1);
+
+	for (int i = 0; i < aini; ++i)
+	{
+		respuesta.AddIni(afsa.initialStates[i]+1);
+		respuesta.AddTran(1,afsa.initialStates[i]+1,":");
+	}
+	for (int i = 0; i < bini; ++i)
+	{
+		respuesta.AddIni(bfsa.initialStates[i]+aestados+1);
+		respuesta.AddTran(1,bfsa.initialStates[i]+aestados+1,":");
+	}
+
+	for (int i = 0; i < afin; ++i)
+	{
+		respuesta.AddFin(afsa.finalStates[i]+1);
+	}
+	for (int i = 0; i < bfin; ++i)
+	{
+		respuesta.AddFin(bfsa.finalStates[i]+aestados+1);
+	}
+	return respuesta;
+}
+
+/*
+	Crea un FSA a partir del complemento de otro FSA
+*/
+Fsa CompFsa (const Fsa& afsa)
+{
+	int aestados = afsa.matrizAdyacencia.size(),
+		bestados = bfsa.matrizAdyacencia.size(),
+		nestados = aestados + bestados + 1,
+		aini = afsa.initialStates.size(),
+		afin = afsa.finalStates.size(),
+		bini = bfsa.initialStates.size(),
+		bfin = bfsa.finalStates.size();
+
+	Fsa respuesta(nestados);
+
+	for (int i = 0; i < aestados; ++i)
+	{
+		for (int j = 0; j < aestados; ++j)
+		{
+			respuesta.AddTran(i+2, j+2, afsa.matrizAdyacencia[i][j]);
+		}
+	}
+	for (int i = 0; i < bestados; ++i)
+	{
+		for (int j = 0; j < bestados; ++j)
+		{
+			respuesta.AddTran(i+aestados+2, j+aestados+2, bfsa.matrizAdyacencia[i][j]);
+		}
+	}
+
+	respuesta.AddIni(1);
+
+	for (int i = 0; i < aini; ++i)
+	{
+		respuesta.AddIni(afsa.initialStates[i]+1);
+		respuesta.AddTran(1,afsa.initialStates[i]+1,":");
+	}
+	for (int i = 0; i < bini; ++i)
+	{
+		respuesta.AddIni(bfsa.initialStates[i]+aestados+1);
+		respuesta.AddTran(1,bfsa.initialStates[i]+aestados+1,":");
+	}
+
+	for (int i = 0; i < afin; ++i)
+	{
+		respuesta.AddFin(afsa.finalStates[i]+1);
+	}
+	for (int i = 0; i < bfin; ++i)
+	{
+		respuesta.AddFin(bfsa.finalStates[i]+aestados+1);
+	}
+	return respuesta;
+}
+
+/*
+	Crea un FSA a partir de la entrada por consola del usuario
+*/
+Fsa CrearCLI()
+{
+	int nestados, x, y;
+	std::string entrada, tipoAutomata;
+
+	std::cout << "Ingrese el numero total de estados: ";
+	std::cin >> nestados;
+
+	Fsa automata(nestados);
+
+
+	std::cout << "Ingrese las transiciones(estado estado caracter), : es epsilon' y 0 para terminar" << std::endl;
+	std::cout << "Los estados se enumeran desde 1 hasta total de estados." << std::endl;
+	while(std::cin >> x && x != 0)
+	{
+		std::cin >> y >> entrada;
+		automata.AddTran(x, y, entrada);
+		// Agregamos el caracter al lenguaje
+		if(automata.lenguaje.find(entrada) == std::string::npos)
+			automata.lenguaje += entrada;
+	}
+
+	std::cout << "Ingrese el numero de estados iniciales: ";
+	std::cin >> nestados;
+
+	for (int i = 0; i < nestados; ++i)
+	{
+		std::cout << "Ingrese un estado: ";
+		std::cin >> x;
+		automata.AddIni(x);
+	}
+
+	std::cout << "Ingrese el numero de estados finales: ";
+	std::cin >> nestados;
+
+	for (int i = 0; i < nestados; ++i)
+	{
+		std::cout << "Ingrese un estado: ";
+		std::cin >> x;
+		automata.AddFin(x);
+	}
+
+	std::cout << "Determinando tipo de automata..." << std::endl;
+
+	automata.tipo = automata.EsDeterminista();
+
+	if(automata.tipo == 1)
+		tipoAutomata = "determinista";
+	else
+		tipoAutomata = "no determinista";
+
+	std::cout << "Automata " << tipoAutomata << " creado" << std::endl;
+}
 
 int main(int argc, char const *argv[])
 {
-	Fsa prueba(5);
+	Fsa prueba(5), prueba2;
+
 	prueba.AddIni(1);
 	prueba.AddFin(5);
 	prueba.AddTran(1,2,"0");
 	prueba.AddTran(2,3,"1");
 	prueba.AddTran(4,2,"0");
 	prueba.AddTran(3,5,"1");
+
 	prueba.MostrarFsa();
+
 	std::string respuesta;
 	std::cout << "Aceptacion de cadenas\n";
 	std::cout << "Caso 1\n";
-	respuesta = (prueba.ComprobarCadena("011") == 1) ? "Yes\n" : "NO\n";
+	respuesta = (prueba.ComprobarCadena("011") == 1) ? "Yes\n" : "No\n";
 	std::cout<< respuesta;
+
 	std::cout << "Caso 2\n";
 	respuesta = (prueba.ComprobarCadena("010") == 1) ? "Yes\n" : "NO\n";
 	std::cout<< respuesta;
 	std::cout << "Fin de Aceptacion de cadenas\n";
+
 	prueba.GuardarFsa("pruebasave");
  	prueba.CargarFsa("pruebasave.fsa"); 	
 	prueba.MostrarFsa();
+
+	prueba2 = CrearCLI();
+	std::string test_entrada;
+
+	std::cout << "Inrgese una cadena a probar: ";
+	std::cin >> test_entrada;
+	std::cout << ((prueba.ComprobarCadena(test_entrada) == 1) ? "Yes" : "No") << std::endl;
+
 	return 0;
 }
